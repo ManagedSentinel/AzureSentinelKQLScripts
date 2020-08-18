@@ -1,0 +1,12 @@
+let timeInterval = 24h;
+CommonSecurityLog
+| where TimeGenerated > ago(timeInterval)
+| summarize Total=count(),makeset(DeviceName)
+| mv-expand set_DeviceName
+| extend DeviceName=tostring(set_DeviceName)
+| join kind=innerunique (CommonSecurityLog
+| where TimeGenerated > ago(timeInterval)
+| summarize Count=count() by DeviceName) on DeviceName
+| extend percentagePerActivity = round(todouble(Count)/Total*100,2)
+| project DeviceName, percentagePerActivity, totalPerActivity=Count, Total
+| sort by totalPerActivity desc

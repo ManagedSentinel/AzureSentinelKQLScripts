@@ -1,0 +1,8 @@
+let timeInterval = 7d;
+SecurityIncident 
+| where TimeGenerated  > ago(timeInterval)
+| extend AlertSource = tostring(parse_json(tostring(AdditionalData.alertProductNames))[0])
+| summarize Count=count(),SampleDescription=max(Description),First=min(TimeGenerated),Last=max(TimeGenerated) by Title, AlertSource, Severity
+| extend AvgPerDay = round(Count/(timeInterval/1d),2)
+| sort by Count desc
+| project Title, Severity, AlertSource, First, Last, AvgPerDay, Count, SampleDescription
