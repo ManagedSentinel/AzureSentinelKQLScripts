@@ -1,10 +1,11 @@
+let timeInterval = 24h;
 SecurityEvent
-| where TimeGenerated > ago(24h)
+| where TimeGenerated > ago(timeInterval)
 | summarize Total=count(),makeset(Activity)
 | mv-expand set_Activity
 | extend Activity=tostring(set_Activity)
 | join kind=innerunique (SecurityEvent
-| where TimeGenerated > ago(24h)
+| where TimeGenerated > ago(timeInterval)
 | summarize Count=count() by Activity) on $left.Activity == $right.Activity
 | extend percentagePerActivity = round(todouble(Count)/Total*100,2)
 | project Activity, percentagePerActivity, totalPerActivity=Count, Total
