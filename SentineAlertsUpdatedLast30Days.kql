@@ -1,0 +1,8 @@
+AzureActivity
+| where TimeGenerated  > ago(30d)
+| where ResourceProvider == "Microsoft.SecurityInsights"
+| extend scope_ = tostring(parse_json(Authorization).scope)
+| project TimeGenerated, OperationName, Caller, CallerIpAddress,scope_, ResourceId
+| where OperationName contains 'alert'
+| summarize count(),First=min(TimeGenerated), Last=max(TimeGenerated),Operations=makeset(OperationName) by Caller
+| sort by count_ desc
