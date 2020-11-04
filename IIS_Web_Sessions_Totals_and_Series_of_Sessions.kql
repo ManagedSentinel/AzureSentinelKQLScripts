@@ -1,0 +1,20 @@
+W3CIISLog
+//timeframe: last 24h
+| where TimeGenerated >= ago(1d)
+//filter to 2 columns only: client IP and timestamp of the record
+| project cIP, TimeGenerated
+//sort by client IP and then by timestamp (create a serialized table)
+| sort by cIP asc, TimeGenerated asc
+//calculate start time of each session (max session time: 1h, time between sessions: 5 min, reset/new session created when client IP different from previous)
+| extend SessionStartTime = row_window_session(TimeGenerated, 1h, 5m, cIP != prev(cIP))
+//summarize session end time (max TimeGenerated for the session) by client IP and session start time
+| summarize SessionEndTime = max(TimeGenerated) by cIP, SessionStartTime
+//filter to a table containing duration of the session (timespan/datetime format)
+| project ClientIP = cIP
+, SessionStartTime
+, SessionEndTime
+, DurationTime = SessionEndTime - SessionStartTime
+//create an additional column with session time calculated in seconds (scalar format)
+| extend DurationSeconds = ( DurationTime / 1s )
+| sort by DurationSeconds desc, ClientIP asc
+| summarize TotalSessionTimeSeconds = sum(DurationSeconds), Sessions=makeset(DurationSeconds) by ClientIP
