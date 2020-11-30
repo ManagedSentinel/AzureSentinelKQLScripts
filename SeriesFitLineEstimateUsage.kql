@@ -1,0 +1,19 @@
+//define a time range variable for the ingested data (last 90 days)
+let timeRange = 90d;
+//time in the future for which log usage is to be estimated (in 30 days)
+let projectionDays = 30;
+//query Usage table
+Usage
+//filter by selected time range
+| where TimeGenerated > ago(timeRange)
+//create an array of values for daily log consumption over selected time range
+| make-series logConsumption = sum(Quantity) default = 0
+on TimeGenerated in range (ago(timeRange) , ago(1d), 1d)
+//apply linear regression to the logConsumption array to determine parameters like Slope, Interception, LineFit
+| extend (RSquare,Slope,Variance,RVariance,Interception,LineFit) = series_fit_line(logConsumption)
+//convert the time range to a scalar value
+| extend numberOfDaysUsed = timeRange/1d
+//calculate estimated log usage on the date 30 days from now
+| extend estUsage = Slope*(numberOfDaysUsed + projectionDays) + Interception
+//filter to estimated log usage value
+| project estUsage
