@@ -1,0 +1,25 @@
+//using series_fit_2lines() - useful when there is a sudden change in the data
+let timeRange = 90d;
+let projectionDays = 30;
+Usage
+| where TimeGenerated > ago(timeRange)
+| make-series logConsumption = sum(Quantity) default = 0
+on TimeGenerated in range (ago(timeRange) , ago(1d), 1d)
+| extend (RSquare,SplitIDx,Variance, RVariance, LineFit, right_rsquare,right_slope,right_interception,right_variance,right_rvariance,left_rsquare,left_slope,left_variance,left_rvariance) = series_fit_2lines(logConsumption)
+| extend numberOfDaysUsed = timeRange/1d
+| render timechart
+
+//using series_fit_2lines() - useful when there is a sudden change in the data
+let timeRange = 90d;
+let projectionDays = 30;
+Usage
+| where TimeGenerated > ago(timeRange)
+| make-series logConsumption = sum(Quantity) default = 0
+on TimeGenerated in range (ago(timeRange) , ago(1d), 1d)
+//apply two segments linear regression to the logConsumption array to determine index of split, right slope, right nterception, LineFit
+| extend (RSquare,SplitIDx,Variance, RVariance, LineFit, right_rsquare,right_slope,right_interception,right_variance,right_rvariance,left_rsquare,left_slope,left_variance,left_rvariance) = series_fit_2lines(logConsumption)
+//convert time range to scalar value
+| extend numberOfDaysUsed = timeRange/1d
+//using index of split point (days from the begining of the time series) calculate estimated log usage in 30 days from the current date
+| extend estUsage = right_slope*(numberOfDaysUsed - SplitIDx + projectionDays) + right_interception
+| project estUsage
