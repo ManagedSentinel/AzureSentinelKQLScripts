@@ -1,0 +1,15 @@
+// Searches device info table for non server operating systems then return any users who have logged on interactively as an admin and devices as a set per account. As the logins are local, multiple devices indicate that the account has been created on each device. Can add exclusions for known IT admin accounts
+// Adapted from https://github.com/reprise99/Sentinel-Queries/blob/main/Device-CreateSetofLocalAdminsperDevice.kql?WT.mc_id=m365-0000-rotrent
+let devices=
+    DeviceInfo
+    | where TimeGenerated > ago(24h)
+    | where OSPlatform !contains "Server"
+    | summarize arg_max(TimeGenerated, *) by DeviceName
+    | project DeviceName;
+DeviceLogonEvents
+| where LogonType == "Interactive"
+| where IsLocalAdmin == true
+| join kind=inner devices on DeviceName
+| where AccountName !startswith "a-" and AccountName !startswith "svc" and AccountName !startswith "admin"
+| summarize Devices=make_set(DeviceName),NumberOfDevices=dcount(DeviceName),ActionTypes=makeset(ActionType) by AccountName
+| sort by NumberOfDevices desc
