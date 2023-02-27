@@ -1,0 +1,5 @@
+union (CommonSecurityLog),(Syslog)
+| summarize Count=count(),Bytes=sum(_BilledSize) by bin(TimeGenerated,1h)
+| extend EPS = Count/3600
+| extend MB = round(Bytes/1000/1000,0)
+| project-away Bytes
