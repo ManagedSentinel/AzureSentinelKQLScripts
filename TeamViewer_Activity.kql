@@ -1,0 +1,38 @@
+// Identify instances of teamv*.* processes in  WindowsEvents, SecurityEvent and DeviceProcessEvents
+let ProcessToLookFor = 'teamv';
+union isfuzzy=true
+    (
+    WindowsEvent
+    | where EventID == 4688
+    | extend NewProcessName = tostring(EventData.NewProcessName)
+    | extend Process = tostring(split(NewProcessName, "\\")[-1])
+    | extend ParentProcessNameFullPath = tostring(EventData.ParentProcessName)
+    | extend ParentProcessName = tostring(split(ParentProcessNameFullPath, "\\")[-1])
+    | where Process startswith ProcessToLookFor
+    | summarize
+        Count=count(),
+        Computers=make_set(Computer),
+        NumberOfComputers=dcount(Computer),
+        Parent=make_set(ParentProcessName)
+        by Process, Type),
+    (SecurityEvent
+    | where Activity == "4688 - A new process has been created."
+    | where Process startswith ProcessToLookFor
+    | extend Parent = tostring(split(ParentProcessName, "\\")[-1])
+    | summarize
+        Count=count(),
+        Computers=make_set(Computer),
+        NumberOfComputers=dcount(Computer),
+        ParentProcessNames = make_set(Parent),
+        Accounts=make_set(Account)
+        by Process, Type),
+    (DeviceProcessEvents 
+    | where FileName startswith ProcessToLookFor
+    | extend Parent = InitiatingProcessFileName 
+    | summarize
+        Count=count(),
+        Computers=make_set(DeviceName),
+        NumberOfComputers=dcount(DeviceName),
+        ParentProcessNames = make_set(Parent),
+        Accounts=make_set(AccountName)
+        by Process=FileName, Type)
