@@ -1,0 +1,11 @@
+union (CommonSecurityLog),(Syslog | extend DeviceVendor="Syslog", DeviceProduct = "Plain syslog")
+| where DeviceProduct !startswith "NSSWeb" // NSSWeb is inconsistent in CEF log format
+| where TimeGenerated > ago(24h)
+| extend DeviceInfo = strcat(DeviceVendor," - ", DeviceProduct)
+| where isnotempty(DeviceVendor) and isnotempty(DeviceProduct)
+| summarize Count=count(),Bytes=sum(_BilledSize) by DeviceInfo, SentinelTable=Type
+| extend EPS = Count/3600/24
+| extend MB = round(Bytes/1000/1000,0)
+| extend AverageRecordSizeInBytes = round(Bytes/Count,0)
+| project-away Bytes, Count, EPS, MB
+| sort by DeviceInfo asc
